@@ -80,7 +80,7 @@ def update_student(student_name : Optional[str] = None, modify_student: Student)
         if Student.name == student.name:
              update_student = Student.copy(update = modify_student.update.dict(exclude_unset = True))
              university[idx] = update_student
-        return update_student
+        return update_studentg
         raise HTTPException(
              status_code = 404,
              detail = "student was not found!"
