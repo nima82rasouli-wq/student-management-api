@@ -1,11 +1,19 @@
 from datetime import date
 from typing import Annotated
-from fastapi import FastAPI, HTTPEXception, Query
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-app = FastAPI()
+#read me
+
+app = FastAPI(
+    title="Student Management API",
+    description="A RESTful API for managing university students.",
+    version="1.0.0",
+)
+
+#data model
 
 class Student(BaseModel):
     id: Optional[UUID] = None
@@ -18,27 +26,30 @@ class Student(BaseModel):
 
 university: List[Student] = []
 
+#enroll students
 
-@app.post("/university/", response_model = Student)
+@app.post("/university/", response_model = Student, status_code=201)
 async def register_student(stu: Student):
     stu.id = uuid4()
     university.append(stu)
     return stu
 
+#find and filter students
+
 @app.get("/university/", response_model = List[Student])
-async def find_student(N: Annotated[str|None, Query(maximum_length = 50)] = None):
-    sort_by: Optional[str] = Query(None),
-    major: Optional[str] = Query(None, description = "sort by major"),
-    gpa: Optional[int] = Query(None, description= "sort by gpa"),
-    graduation: Optional[date] = Query(None, description= "sort by graduation")
+async def find_student(
+    major: Optional[str] = Query(None, description = "filter students by major"),
+    gpa: Optional[float] = Query(None, description= "filter students by GPA"),
+    graduation: Optional[date] = Query(None, description= "filter students by graduation date"),
+    sort_by: Optional[str] = Query(None, description = "sort by: name, major, gpa, graduation"),
+    ):
+
     result = university.copy()
 
 # filter
     if major:
-        result = [
-             student for student in result
-               major.lower() in student.major.lower()
-
+        result = [student for student in result if major.lower() in student.major.lower()
+        ]
     if gpa:
         result = [
              student for student in result
@@ -51,57 +62,71 @@ async def find_student(N: Annotated[str|None, Query(maximum_length = 50)] = None
         ]
 # sorting
 
+    if sort_by == "name":
+        result = sorted(
+            result,
+            key=lambda student: student.name.lower()
+        )
     if sort_by == "major":
-            result = sorted(result, key=lambda b: b.major.lower())
+            result = sorted(
+                 result,
+              key=lambda b: b.major.lower()
+            )
+
     elif sort_by == "gpa":
-            result = sorted(result, key= lambda s: s.gpa)
+            result = sorted(
+                 result,
+                   key= lambda s: s.gpa
+                   )
 
     elif sort_by == "graduation":
-            result = sorted(result, key= lambda s: s.graduation)
-
-    return university
-
-
-@app.get("/university/{student_id}", response_model=Student)
-def search_student(student_id: UUID):
-
-    for student in university:
-        if student.id == student_id:
-            return student
-
-    raise HTTPException(
-        status_code= 404,
-        detail="Student was not found!"
-    )
-
-@app.put("/university/{student_name}", response_model = Student)
-def update_student(student_name : Optional[str] = None, modify_student: Student):
-     for idx, Studnet in enumerate(university):
-        if Student.name == student.name:
-             update_student = Student.copy(update = modify_student.update.dict(exclude_unset = True))
-             university[idx] = update_student
-        return update_studentg
+            result = sorted(
+                 result,
+                   key= lambda s: s.graduation
+                   )
+    elif sort_by is not None:
         raise HTTPException(
-             status_code = 404,
-             detail = "student was not found!"
+            status_code=400,
+            detail="Invalid sort_by value. Use: name, major, gpa, graduation"
         )
 
-@app.put("/university/{student_gpa}", response_model= Student)
-def
 
-     major: Optional[] = None
-     gpa: Optional[] = None
-     graduation: Optional[] = None
+    return result
+
+#find student
+
+@app.get("/university/{student_id}", response_model = Student)
+async def get_student(student_id: UUID):
+     for student in university:
+          if student.id == student_id:
+               return student
+     raise HTTPException(status_code=404, detail= "student was not found")
+
+#update student information
+
+@app.put("/university/{student_id}", response_model = Student)
+async def update_student(
+     student_id: UUID,
+     updated_student: Student
+):
+     for idx, student in enumerate(university):
+             if student.id == student.id:
+                  updated_student.id = student.id
+                  university[idx] = updated_student
+                  return updated_student
+
+
+     raise HTTPException(status_code = 404, detail = "student was not found!")
+
+
+# student Expulsion
 
 @app.delete("/university/{student_id}", response_model= Student)
-def delete_student (student_id: UUID, del_student: Student)
-     for idx, Student in enumerate(university):
-          if Student.id == student_id:
-            reject_student = Student.copy(update = student_id.update.dict(exclude_unset = True))
-            university[idx] = reject_student
-          return reject_student
-          raise HTTPEXception(
-               status_code = 404,
-               detail = " studnet was not found"
-          )
+async def delete_student (student_id: UUID):
+     for idx, student in enumerate(university):
+          if student.id == student_id:
+            expelled_student = university.pop(idx)
+            return expelled_student
+
+     raise HTTPException(status_code = 404, detail = "studnet was not found")
 
